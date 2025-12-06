@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>GlobalCluster - Dashboard</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0a0f24;
+            color: #fff;
+        }
+
+        .topbar {
+            background: #111831;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+
+        .topbar h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #3f74ff;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #3259c9;
+        }
+
+        .container {
+            padding: 30px;
+        }
+
+        .card {
+            background: #111831;
+            padding: 25px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.4);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        .value {
+            font-size: 30px;
+            margin-top: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="topbar">
+    <h1>GlobalCluster Dashboard</h1>
+    <button onclick="logout()">Sair</button>
+</div>
+
+<div class="container">
+    <h2>Bem-vindo! Aqui estão suas informações:</h2>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Token</h2>
+            <p id="tokenBox" style="word-wrap: break-word; opacity: 0.6;"></p>
+        </div>
+
+        <div class="card">
+            <h2>Status do Sistema</h2>
+            <p id="systemStatus" class="value">Carregando...</p>
+        </div>
+
+        <div class="card">
+            <h2>Nós Conectados</h2>
+            <p id="nodes" class="value">Carregando...</p>
+        </div>
+
+        <div class="card">
+            <h2>Última Sincronização</h2>
+            <p id="lastSync" class="value">Carregando...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = "http://192.168.1.7:8080";
+
+    // Verifica se existe token
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+        window.location.href = "/login.html";
+    }
+
+    // Mostra o token na interface
+    document.getElementById("tokenBox").innerText = token;
+
+    // Busca os dados do dashboard
+    fetch(`${API}/dashboard`, {
+        method: "GET",
+        headers: {
+            "Authorization": token
+        }
+    })
+    .then(r => {
+        if (r.status === 403 || r.status === 401) {
+            alert("Sessão expirada. Faça login novamente.");
+            localStorage.removeItem("token");
+            window.location.href = "/login.html";
+            return;
+        }
+        return r.json();
+    })
+    .then(data => {
+        document.getElementById("systemStatus").innerText = data.status;
+        document.getElementById("nodes").innerText = data.nodes;
+        document.getElementById("lastSync").innerText = data.sync;
+    })
+    .catch(err => {
+        console.log("Erro no dashboard:", err);
+        alert("Erro ao carregar painel.");
+    });
+
+    // Botão de logout
+    function logout() {
+        localStorage.removeItem("token");
+        window.location.href = "/login.html";
+    }
+</script>
+
+</body>
+</html>

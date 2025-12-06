@@ -1,0 +1,4 @@
+com\globalcluster\master\TestController.class
+com\globalcluster\master\NodeInfo.class
+com\globalcluster\master\MasterApplication.class
+com\globalcluster\master\NodeController.class

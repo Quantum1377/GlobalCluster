@@ -1,0 +1,3 @@
+com\globalcluster\gateway\GatewayController.class
+com\globalcluster\gateway\GatewayApplication.class
+com\globalcluster\gateway\RegionResolver.class
