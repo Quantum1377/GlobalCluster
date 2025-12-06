@@ -66,7 +66,7 @@ GlobalCluster supports multiple transport protocols:
 
 ---
 
-## 📁 Project Structure (suggested)
+## 📁 Project Structure (Essential)
 ```
 globalcluster/
 ├── master/
