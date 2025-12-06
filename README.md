@@ -1,13 +1,12 @@
-________________________________________
-________________________________________
-  ____ _       _           _ 
+```
+   ____ _       _           _ 
  / ___| | ___ | |__   __ _| |
 | |  _| |/ _ \| '_ \ / _` | |
 | |_| | | (_) | |_) | (_| | |
  \____|_|\___/|_.__/ \__,_|_|Cluster
 
-_________________________________________
-_________________________________________
+```
+
 # 🌍 GlobalCluster
 
 **GlobalCluster** is a distributed system designed to connect and manage servers worldwide, enabling intelligent task routing, real-time communication, and fault-tolerant processing across regions.
