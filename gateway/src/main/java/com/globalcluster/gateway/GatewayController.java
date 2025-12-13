@@ -88,10 +88,9 @@ public class GatewayController {
 
     // Método auxiliar para converter Entity para DTO
     private NodeRegistrationInfo toNodeRegistrationInfo(NodeRegistrationEntity entity) {
-        // Assume que NodeRegistrationInfo tem um construtor ou setters apropriados
         NodeRegistrationInfo dto = new NodeRegistrationInfo(entity.getIpAddress(), entity.getContinent(), entity.getAssignedPort());
         dto.setRegistrationTime(entity.getRegistrationTime());
-        // Se NodeRegistrationInfo pudesse ter lastHeartbeat, também seria setado aqui
+        dto.setLastHeartbeat(entity.getLastHeartbeat()); // Setar o lastHeartbeat
         return dto;
     }
 

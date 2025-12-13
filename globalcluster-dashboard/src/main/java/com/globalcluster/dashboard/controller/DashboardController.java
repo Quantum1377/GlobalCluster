@@ -72,7 +72,7 @@ public class DashboardController {
                             info.getContinent(),
                             info.getAssignedPort(),
                             info.getRegistrationTime(),
-                            LocalDateTime.now(), // lastHeartbeat
+                            info.getLastHeartbeat(), // lastHeartbeat agora vem do NodeRegistrationInfo
                             ping,
                             latency,
                             status

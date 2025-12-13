@@ -7,13 +7,14 @@ public class NodeRegistrationInfo {
     private String continent;
     private int assignedPort;
     private LocalDateTime registrationTime;
-    // Add more fields for complexity later, e.g., last heartbeat, status
+    private LocalDateTime lastHeartbeat; // Adicionado para consistência
 
     public NodeRegistrationInfo(String ipAddress, String continent, int assignedPort) {
         this.ipAddress = ipAddress;
         this.continent = continent;
         this.assignedPort = assignedPort;
         this.registrationTime = LocalDateTime.now();
+        this.lastHeartbeat = LocalDateTime.now(); // Inicializa com o tempo de registro
     }
 
     public String getIpAddress() {
@@ -46,5 +47,13 @@ public class NodeRegistrationInfo {
 
     public void setRegistrationTime(LocalDateTime registrationTime) {
         this.registrationTime = registrationTime;
+    }
+
+    public LocalDateTime getLastHeartbeat() {
+        return lastHeartbeat;
+    }
+
+    public void setLastHeartbeat(LocalDateTime lastHeartbeat) {
+        this.lastHeartbeat = lastHeartbeat;
     }
 }
