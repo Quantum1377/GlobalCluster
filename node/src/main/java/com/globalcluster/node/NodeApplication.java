@@ -1,33 +1,152 @@
 package com.globalcluster.node;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
+import io.vavr.CheckedFunction0;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+
+import javax.annotation.PreDestroy;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ConnectException;
+import java.net.URL;
+import java.time.Duration;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @SpringBootApplication
 public class NodeApplication {
 
+    private static final Logger logger = LoggerFactory.getLogger(NodeApplication.class);
+
+    @Value("${globalcluster.gateway.url}")
+    private String gatewayUrl;
+
+    private String nodeExternalIp; // Para armazenar o IP do nó
+    private RestTemplate restTemplate; // Para usar no PreDestroy
+    private Retry registerRetry;
+    private Retry deregisterRetry;
+    private CircuitBreaker continentServerCircuitBreaker;
+
     public static void main(String[] args) {
         SpringApplication.run(NodeApplication.class, args);
-
-        // Registrar Node no Master assim que iniciar
-        registerNode();
     }
 
-    private static void registerNode() {
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            String masterUrl = "http://localhost:8080/register";
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
 
-            // Cria informações do Node
-            NodeInfo node = new NodeInfo("Node-1", "US-East", 4, 8192);
+    @Bean
+    public ApplicationRunner init(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate; // Armazenar o RestTemplate injetado
 
-            // Faz POST para o Master
-            String response = restTemplate.postForObject(masterUrl, node, String.class);
-            System.out.println("Response from Master: " + response);
+        // Configurar Retry para registro e desregistro (tentar 3 vezes com 2s de delay)
+        RetryConfig retryConfig = RetryConfig.custom()
+                .maxAttempts(3)
+                .waitDuration(Duration.ofSeconds(2))
+                .retryExceptions(ResourceAccessException.class, ConnectException.class)
+                .build();
+        RetryRegistry retryRegistry = RetryRegistry.of(retryConfig);
+        registerRetry = retryRegistry.retry("registerNode");
+        deregisterRetry = retryRegistry.retry("deregisterNode");
 
-        } catch (Exception e) {
-            System.err.println("Failed to register Node: " + e.getMessage());
+        // Configurar CircuitBreaker para a conexão com o servidor do continente
+        // Se 50% das últimas 10 requisições falharem, abre o circuito por 5s
+        CircuitBreakerConfig circuitBreakerConfig = CircuitBreakerConfig.custom()
+                .failureRateThreshold(50) // 50% de falha
+                .slidingWindowSize(10)    // em uma janela de 10 requisições
+                .minimumNumberOfCalls(5)  // mínimo de 5 chamadas para abrir
+                .waitDurationInOpenState(Duration.ofSeconds(5)) // permanece aberto por 5s
+                .build();
+        CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.of(circuitBreakerConfig);
+        continentServerCircuitBreaker = circuitBreakerRegistry.circuitBreaker("continentServer");
+
+
+        return args -> {
+            try {
+                // 1. Get own external IP
+                nodeExternalIp = getExternalIp(); // Armazenar o IP
+                logger.info("Node's external IP detected: {}", nodeExternalIp);
+
+                // 2. Register with Gateway (com Retry)
+                String registerUrl = gatewayUrl + "/registerNode";
+                logger.info("Registering with Gateway at: {}", registerUrl);
+                
+                CheckedFunction0<String> registerCall = CheckedFunction0.of(() ->
+                        restTemplate.postForObject(registerUrl, null, String.class));
+                String registrationResponse = Retry.decorateCheckedSupplier(registerRetry, registerCall)
+                        .apply();
+                logger.info("Registration response from Gateway: {}", registrationResponse);
+
+                // 3. Parse Gateway Response for assigned port
+                Pattern pattern = Pattern.compile("Connect to Master on port: (\\d+)");
+                Matcher matcher = pattern.matcher(registrationResponse);
+                if (matcher.find()) {
+                    int assignedPort = Integer.parseInt(matcher.group(1));
+                    logger.info("Assigned continent port: {}", assignedPort);
+
+                    // 4. Connect to assigned continent port and get welcome message (com Circuit Breaker e Retry)
+                    String continentServerUrl = gatewayUrl.substring(0, gatewayUrl.lastIndexOf(":")) + ":" + assignedPort + "/";
+                    logger.info("Connecting to continent server at: {}", continentServerUrl);
+                    
+                    CheckedFunction0<String> continentCall = CheckedFunction0.of(() ->
+                            restTemplate.getForObject(continentServerUrl, String.class));
+                    
+                    String welcomeMessage = CircuitBreaker.decorateCheckedSupplier(continentServerCircuitBreaker, 
+                                            Retry.decorateCheckedSupplier(registerRetry, continentCall)) // Usar o mesmo retry config
+                                            .apply();
+                    logger.info("Welcome message from continent server: {}", welcomeMessage);
+
+                } else {
+                    logger.error("Could not parse assigned port from Gateway response: {}", registrationResponse);
+                }
+
+            } catch (Exception e) {
+                logger.error("Failed to initialize Node: {}", e.getMessage(), e);
+            }
+        };
+    }
+
+    @PreDestroy
+    public void deregisterNode() {
+        if (nodeExternalIp != null && restTemplate != null) {
+            try {
+                String deregisterUrl = gatewayUrl + "/deregisterNode/" + nodeExternalIp;
+                logger.info("Deregistering node {} from Gateway at: {}", nodeExternalIp, deregisterUrl);
+                
+                CheckedFunction0<Void> deregisterCall = CheckedFunction0.of(() -> {
+                    restTemplate.delete(deregisterUrl);
+                    return null;
+                });
+                
+                Retry.decorateCheckedRunnable(deregisterRetry, deregisterCall)
+                        .run();
+                logger.info("Node {} successfully deregistered.", nodeExternalIp);
+            } catch (Exception e) {
+                logger.error("Failed to deregister node {}: {}", nodeExternalIp, e.getMessage());
+            }
+        }
+    }
+
+    private String getExternalIp() throws IOException {
+        URL whatismyip = new URL("http://checkip.amazonaws.com");
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(whatismyip.openStream()))) {
+            return in.readLine();
         }
     }
 }
+

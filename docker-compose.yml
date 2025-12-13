@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080" # Main gateway port for registration and dashboard redirect
+      - "8081:8081" # Americas continent port
+      - "8082:8082" # Europe continent port
+      - "8083:8083" # Africa continent port
+      - "8084:8084" # Asia continent port
+      - "8085:8085" # Oceania continent port
+      - "8086:8086" # Antarctica continent port
+    networks:
+      - globalcluster-network
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gateway_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+    depends_on:
+      - postgres # Gateway agora depende do serviço postgres para iniciar
+    # Para o GeoIP, o contêiner gateway precisará acessar a internet para baixar o DB se não estiver no contexto
+    # Ou o DB precisa ser montado como um volume
+    # Por enquanto, assumimos que o DB GeoLite2-Country.mmdb está no src/main/resources do módulo gateway antes do build
+
+  dashboard:
+    build:
+      context: ./globalcluster-dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "8087:8080" # Mapeia a porta 8080 do contêiner para 8087 no host para evitar conflito com o gateway
+    environment:
+      - globalcluster.gateway.url=http://gateway:8080 # Comunicação interna via nome de serviço
+      # Certifique-se de que dashboard.allowed-ips no application.properties do dashboard inclui o IP do contêiner Docker
+      # ou 172.x.x.x para acesso da rede docker interna. Ou remova a restrição por IP para teste inicial.
+      # Para o teste, podemos adicionar 172.0.0.0/8 ao allowed-ips no application.properties do dashboard.
+      # Ou ajustar o allowed-ips para 0.0.0.0/0 para testes em ambiente Docker.
+    depends_on:
+      - gateway
+    networks:
+      - globalcluster-network
+
+  node:
+    build:
+      context: ./node
+      dockerfile: Dockerfile
+    environment:
+      - globalcluster.gateway.url=http://gateway:8080 # Comunicação interna via nome de serviço
+    # Não expõe portas para o host, pois os nós se conectam para fora
+    networks:
+      - globalcluster-network
+    # Para simular múltiplos nós, você pode escalar este serviço: docker-compose up --scale node=3
+    # Note: O getExternalIp() dentro do NodeApplication vai retornar o IP do contêiner Docker na rede bridge,
+    # não o IP público da sua máquina. Isso é esperado e funcional para testes dentro do Docker Compose.
+
+  master:
+    build:
+      context: ./master
+      dockerfile: Dockerfile
+    # Não expõe portas para o host, a menos que haja uma interação externa direta
+    # Para o propósito atual, não é estritamente necessário expor.
+    networks:
+      - globalcluster-network
+
+  postgres:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_DB: gateway_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432" # Porta para acesso externo ao DB, se necessário para inspeção
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - globalcluster-network
+
+networks:
+  globalcluster-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

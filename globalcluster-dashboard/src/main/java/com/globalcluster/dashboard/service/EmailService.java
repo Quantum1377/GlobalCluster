@@ -1,4 +1,4 @@
-package seu.pacote.service;
+package com.globalcluster.dashboard.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;

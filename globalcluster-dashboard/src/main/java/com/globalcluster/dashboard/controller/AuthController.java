@@ -1,5 +1,4 @@
 package com.globalcluster.dashboard.controller;
-package com.globalcluster.dashboard.controller;
 
 import com.globalcluster.dashboard.service.EmailService;
 import com.globalcluster.dashboard.service.AuthSessionService;
@@ -28,7 +27,9 @@ public class AuthController {
 
         int code = (int) (Math.random() * 900000 + 100000);  // 6 dígitos
 
-        emailService.sendVerificationCode(email, code);
+        String subject = "Seu código de verificação";
+        String body = "O código para fazer login no GlobalCluster é: " + code;
+        emailService.sendEmail(email, subject, body);
 
         return authSessionService.createPendingSession(email, code);
     }
