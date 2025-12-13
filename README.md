@@ -1,126 +1,126 @@
-# GlobalCluster: Um Sistema Distribuído com Roteamento Geo-Inteligente e Monitoramento
+# GlobalCluster: A Geo-Intelligent Distributed System with Monitoring
 
-## Visão Geral do Projeto
+## Project Overview
 
-O GlobalCluster é um sistema distribuído de demonstração construído com Spring Boot, projetado para ilustrar conceitos de arquitetura de microsserviços, roteamento geo-inteligente, persistência de dados, resiliência e orquestração com Docker. Ele simula uma rede global de nós que se registram em um Gateway, são direcionados para "servidores de continente" e têm seu status monitorado através de um Dashboard.
+GlobalCluster is a demonstration distributed system built with Spring Boot, designed to illustrate concepts of microservices architecture, geo-intelligent routing, data persistence, resilience, and Docker orchestration. It simulates a global network of nodes that register with a Gateway, are directed to "continent servers," and have their status monitored through a Dashboard.
 
-## Funcionalidades Principais
+## Key Features
 
-*   **Roteamento Geo-Inteligente:** O Gateway utiliza MaxMind GeoIP2 para determinar o continente de um nó com base em seu endereço IP e redirecioná-lo para uma porta específica do continente.
-*   **Servidores de Continente Virtuais:** O próprio Gateway escuta em múltiplas portas (8081-8086), servindo como "servidor de continente" e retornando mensagens de boas-vindas específicas.
-*   **Auto-registro de Nós:** Os nós detectam automaticamente seu IP externo, registram-se no Gateway e se conectam à porta do continente designada.
-*   **Persistência de Dados (PostgreSQL):** O Gateway armazena os registros dos nós em um banco de dados PostgreSQL, garantindo a durabilidade dos dados.
-*   **Dashboard de Monitoramento:** Uma interface web para visualizar os nós registrados, seus IPs, continentes, portas atribuídas e métricas simuladas (ping, latência, status).
-*   **Restrição de Acesso por IP:** O acesso ao Dashboard é restrito a IPs configuráveis.
-*   **Deregistro Gracioso:** Nós enviam uma requisição de desregistro ao Gateway quando são desligados.
-*   **Mecanismos de Resiliência (Resilience4j):** Implementação de Circuit Breakers e Retries para proteger as chamadas HTTP dos nós para o Gateway, aumentando a robustez do sistema.
-*   **Modularidade:** O projeto é dividido em módulos Maven, incluindo um módulo `shared` para DTOs e interfaces comuns.
-*   **Containerização:** Todos os serviços são dockerizados para fácil deployment e orquestração.
+*   **Geo-Intelligent Routing:** The Gateway uses MaxMind GeoIP2 to determine a node's continent based on its IP address and redirects it to a specific continent port.
+*   **Virtual Continent Servers:** The Gateway itself listens on multiple ports (8081-8086), serving as a "continent server" and returning specific welcome messages.
+*   **Node Auto-Registration:** Nodes automatically detect their external IP, register with the Gateway, and connect to the assigned continent port.
+*   **Data Persistence (PostgreSQL):** The Gateway stores node registration data in a PostgreSQL database, ensuring data durability across Gateway restarts.
+*   **Monitoring Dashboard:** A web interface to visualize registered nodes, their IPs, continents, assigned ports, and simulated metrics (ping, latency, status).
+*   **IP Access Restriction:** Dashboard access is restricted to configurable IP addresses.
+*   **Graceful Deregistration:** Nodes send a deregistration request to the Gateway when they shut down.
+*   **Resilience Mechanisms (Resilience4j):** Implementation of Circuit Breakers and Retries to protect HTTP calls from nodes to the Gateway, increasing system robustness.
+*   **Modularity:** The project is divided into Maven modules, including a `shared` module for common DTOs and interfaces.
+*   **Containerization:** All services are dockerized for easy deployment and orchestration.
 
-## Arquitetura
+## Architecture
 
-O GlobalCluster é composto pelos seguintes módulos/serviços:
+GlobalCluster is composed of the following modules/services:
 
-*   **`gateway`**: Ponto de entrada do sistema. Responsável pelo registro de nós, resolução Geo-IP, roteamento para portas de continente e persistência dos dados dos nós.
-*   **`globalcluster-dashboard`**: Interface de usuário web para monitoramento dos nós. Autenticado e restrito por IP. Busca dados do `gateway`.
-*   **`node`**: Representa um nó de trabalho. Auto-registra-se no `gateway` e se conecta à porta do continente atribuída. Implementa resiliência.
-*   **`master`**: Módulo placeholder que representa um serviço mestre, não diretamente envolvido nas funcionalidades atuais de roteamento Geo-IP.
-*   **`shared`**: Módulo Maven contendo classes DTO (Data Transfer Objects) e outras definições comuns compartilhadas entre os outros módulos.
-*   **`postgres` (via Docker Compose)**: Banco de dados PostgreSQL para persistência dos dados de registro de nós do `gateway`.
+*   **`gateway`**: The entry point of the system. Responsible for node registration, Geo-IP resolution, routing to continent ports, and persistence of node data.
+*   **`globalcluster-dashboard`**: Web user interface for node monitoring. Authenticated and IP-restricted. Fetches data from the `gateway`.
+*   **`node`**: Represents a worker node. Auto-registers with the `gateway` and connects to the assigned continent port. Implements resilience.
+*   **`master`**: A placeholder module representing a master service, not directly involved in the current Geo-IP routing functionalities.
+*   **`shared`**: A Maven module containing Data Transfer Objects (DTOs) and other common definitions shared among other modules.
+*   **`postgres` (via Docker Compose)**: PostgreSQL database for persisting node registration data from the `gateway`.
 
-A comunicação entre os serviços é feita via HTTP.
+Communication between services is done via HTTP.
 
-## Tecnologias Utilizadas
+## Technologies Used
 
-*   **Linguagem:** Java 17+
+*   **Language:** Java 17+
 *   **Framework:** Spring Boot 3.x
 *   **Build Tool:** Apache Maven
-*   **Persistência:** Spring Data JPA, Hibernate
-*   **Banco de Dados:** PostgreSQL
+*   **Persistence:** Spring Data JPA, Hibernate
+*   **Database:** PostgreSQL
 *   **Geo-IP:** MaxMind GeoIP2
-*   **Resiliência:** Resilience4j (Circuit Breaker, Retry)
-*   **Contêineres:** Docker, Docker Compose
-*   **Web:** Spring Web, Thymeleaf, JavaScript (Frontend do Dashboard)
-*   **Segurança:** Spring Security (autenticação básica, restrição por IP)
-*   **Logs:** SLF4J com Logback
+*   **Resilience:** Resilience4j (Circuit Breaker, Retry)
+*   **Containers:** Docker, Docker Compose
+*   **Web:** Spring Web, Thymeleaf, JavaScript (Dashboard Frontend)
+*   **Security:** Spring Security (basic authentication, IP restriction)
+*   **Logging:** SLF4J with Logback
 
-## Como Configurar e Rodar o Projeto
+## How to Set Up and Run the Project
 
-### Pré-requisitos
+### Prerequisites
 
-*   **Java Development Kit (JDK) 17 ou superior**
-*   **Apache Maven 3.6 ou superior**
-*   **Docker Desktop (ou Docker Engine e Docker Compose)**
-*   **Banco de Dados GeoLite2-Country.mmdb:**
-    1.  Crie uma conta gratuita em [MaxMind](https://www.maxmind.com/).
-    2.  Baixe o arquivo `GeoLite2-Country.mmdb`.
-    3.  Coloque este arquivo no diretório `gateway/src/main/resources/`. **Este passo é crucial para o serviço GeoIP funcionar.**
+*   **Java Development Kit (JDK) 17 or higher**
+*   **Apache Maven 3.6 or higher**
+*   **Docker Desktop (or Docker Engine and Docker Compose)**
+*   **GeoLite2-Country.mmdb Database:**
+    1.  Create a free account on [MaxMind](https://www.maxmind.com/).
+    2.  Download the `GeoLite2-Country.mmdb` file.
+    3.  Place this file into the `gateway/src/main/resources/` directory. **This step is crucial for the GeoIP service to function.**
 
-### Passos para Rodar
+### Steps to Run
 
-1.  **Construa o Projeto Maven:**
-    No diretório raiz do projeto (onde está o `pom.xml` principal), execute:
+1.  **Build the Maven Project:**
+    In the project's root directory (where the main `pom.xml` is located), execute:
     ```bash
     mvn clean install -DskipTests
     ```
-    Este comando compilará todos os módulos e criará os arquivos `.jar` necessários para o Docker.
+    This command will compile all modules and create the necessary `.jar` files for Docker.
 
-2.  **Construa e Execute os Contêineres Docker:**
-    Ainda no diretório raiz do projeto (onde está o `docker-compose.yml`), execute:
+2.  **Build and Run Docker Containers:**
+    Still in the project's root directory (where `docker-compose.yml` is located), execute:
     ```bash
     docker-compose up --build
     ```
-    *   **Para simular múltiplos nós:** Se desejar rodar mais de um nó, use a flag `--scale`:
+    *   **To simulate multiple nodes:** If you wish to run more than one node, use the `--scale` flag:
         ```bash
-        docker-compose up --build --scale node=3 # Roda 1 Gateway, 1 Dashboard, 3 Nós, 1 Master, 1 Postgres
+        docker-compose up --build --scale node=3 # Runs 1 Gateway, 1 Dashboard, 3 Nodes, 1 Master, 1 Postgres
         ```
 
-3.  **Acesse a Aplicação:**
+3.  **Access the Application:**
 
-    *   **Dashboard de Monitoramento:**
-        Abra seu navegador e acesse: `http://localhost:8087/dashboard`
-        *   Você será redirecionado para uma tela de login. Use o mecanismo de login existente (o projeto não vem com usuários pré-configurados, mas a funcionalidade de login está presente).
-        *   **Restrição de IP:** O acesso ao dashboard é restrito por IP. Se você estiver acessando de um IP diferente do `127.0.0.1` ou `192.168.1.7` (configurado no `globalcluster-dashboard/src/main/resources/application.properties`), certifique-se de que seu IP está incluído na propriedade `dashboard.allowed-ips`.
+    *   **Monitoring Dashboard:**
+        Open your browser and navigate to: `http://localhost:8087/dashboard`
+        *   You will be redirected to a login screen. Use the existing login mechanism (the project does not come with pre-configured users, but the login functionality is present).
+        *   **IP Restriction:** Dashboard access is restricted by IP. If you are accessing from an IP other than `127.0.0.1` or `192.168.1.7` (configured in `globalcluster-dashboard/src/main/resources/application.properties`), ensure your IP is included in the `dashboard.allowed-ips` property.
 
-    *   **Servidores de Continente (Gateway):**
-        Você pode testar as portas dos continentes diretamente no navegador:
-        *   Américas: `http://localhost:8081/`
-        *   Europa: `http://localhost:8082/`
-        *   África: `http://localhost:8083/`
-        *   Ásia: `http://localhost:8084/`
+    *   **Continent Servers (Gateway):**
+        You can test the continent ports directly in your browser:
+        *   Americas: `http://localhost:8081/`
+        *   Europe: `http://localhost:8082/`
+        *   Africa: `http://localhost:8083/`
+        *   Asia: `http://localhost:8084/`
         *   Oceania: `http://localhost:8085/`
-        *   Antártica: `http://localhost:8086/`
-        Cada uma deve retornar uma mensagem "Bem vindo ao servidor da/do {continente}".
+        *   Antarctica: `http://localhost:8086/`
+        Each should return a "Welcome to the {continent} server" message.
 
-## Observações Importantes
+## Important Notes
 
-*   **Persistência:** Os dados de registro dos nós são armazenados no banco de dados PostgreSQL e persistem entre reinicializações dos serviços.
-*   **Desregistro Gracioso:** Ao desligar os contêineres (`docker-compose down`), observe os logs dos nós para ver as mensagens de desregistro enviadas ao Gateway.
-*   **Resiliência:** Ao tentar simular falhas (ex: parar o serviço `gateway` e observar os logs dos `nodes`), você verá os mecanismos de retentativa e Circuit Breaker do Resilience4j em ação.
-*   **IPs dos Nós:** Os nós rodando em contêineres Docker terão IPs internos da rede Docker (`172.x.x.x`), e o `getExternalIp()` do nó retornará o IP do seu contêiner, não o IP público da sua máquina. O GeoIP continuará funcionando com esses IPs (seja resolvendo-os para "UNKNOWN" ou para um continente baseado na rede Docker).
+*   **Persistence:** Node registration data is stored in the PostgreSQL database and persists across service restarts.
+*   **Graceful Shutdown:** When shutting down containers (`docker-compose down`), observe the node logs for deregistration messages sent to the Gateway.
+*   **Resilience:** By simulating failures (e.g., stopping the `gateway` service and observing node logs), you will see Resilience4j's Retry and Circuit Breaker mechanisms in action.
+*   **Node IPs:** Nodes running in Docker containers will have internal Docker network IPs (`172.x.x.x`), and the `getExternalIp()` of the node will return its container's IP, not your machine's public IP. GeoIP will still function with these IPs (either resolving them to "UNKNOWN" or to a continent based on the Docker network).
 
-## Como Desligar
+## How to Shut Down
 
-Para parar e remover todos os serviços e volumes criados pelo Docker Compose:
+To stop and remove all services and volumes created by Docker Compose:
 ```bash
 docker-compose down -v
 ```
 
-## Próximos Passos (Sugestões de Melhoria)
+## Next Steps (Suggestions for Improvement)
 
-O projeto pode ser expandido e aprimorado com as seguintes funcionalidades:
+The project can be expanded and improved with the following functionalities:
 
-*   **Mecanismo de Heartbeat:** Implementar heartbeats regulares dos nós para o Gateway para ter um status "UP/DOWN" mais preciso.
-*   **Identificação de Nó (UUID):** Usar um UUID persistente para identificar nós de forma única, independentemente do IP.
-*   **Configuração Centralizada:** Integrar Spring Cloud Config para gerenciar configurações dinamicamente.
-*   **Métricas e Observabilidade:** Adicionar Actuator e Micrometer para coletar métricas reais, com integração a Prometheus/Grafana.
-*   **Segurança Avançada:** Implementar autenticação e autorização mais robustas entre serviços.
-*   **Kubernetes:** Preparar o deployment para um cluster Kubernetes.
+*   **Heartbeat Mechanism:** Implement regular heartbeats from nodes to the Gateway for more accurate "UP/DOWN" status.
+*   **Node Identification (UUID):** Use a persistent UUID to uniquely identify nodes, regardless of IP.
+*   **Centralized Configuration:** Integrate Spring Cloud Config to manage configurations dynamically.
+*   **Metrics and Observability:** Add Actuator and Micrometer to collect real metrics, with integration to Prometheus/Grafana.
+*   **Advanced Security:** Implement more robust authentication and authorization between services.
+*   **Kubernetes:** Prepare the deployment for a Kubernetes cluster.
 
-## Licença
+## License
 
-[Adicione aqui as informações da sua licença, ex: MIT License]
+[Add your license information here, e.g., MIT License]
 
-## Contato
+## Contact
 
-[Seu Nome/Email/Perfil do GitHub]
+[Your Name/Email/GitHub Profile]
