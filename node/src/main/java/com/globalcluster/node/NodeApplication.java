@@ -6,7 +6,8 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
-import io.vavr.CheckedFunction0;
+import io.github.resilience4j.core.functions.CheckedSupplier;
+import io.github.resilience4j.core.functions.CheckedRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PreDestroy;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -78,18 +79,25 @@ public class NodeApplication {
 
         return args -> {
             try {
-                // 1. Get own external IP
-                nodeExternalIp = getExternalIp(); // Armazenar o IP
-                logger.info("Node's external IP detected: {}", nodeExternalIp);
+                // 1. Get own external IP (or simulated for testing)
+                // Usar o IP simulado para GeoIP Testing
+                String simulatedPublicIp = getSimulatedPublicIpForTesting(); 
+                logger.info("Node's public IP (simulated for GeoIP testing): {}", simulatedPublicIp);
+                nodeExternalIp = simulatedPublicIp; // Armazenar para desregistro
 
                 // 2. Register with Gateway (com Retry)
-                String registerUrl = gatewayUrl + "/registerNode";
+                String registerUrl = gatewayUrl + "/registerNode?testIp=" + simulatedPublicIp; // Enviar como query param
                 logger.info("Registering with Gateway at: {}", registerUrl);
                 
-                CheckedFunction0<String> registerCall = CheckedFunction0.of(() ->
-                        restTemplate.postForObject(registerUrl, null, String.class));
-                String registrationResponse = Retry.decorateCheckedSupplier(registerRetry, registerCall)
-                        .apply();
+                CheckedSupplier<String> registerCall = () -> restTemplate.postForObject(registerUrl, null, String.class);
+                String registrationResponse;
+                try {
+                    registrationResponse = Retry.decorateCheckedSupplier(registerRetry, registerCall).get();
+                } catch (Throwable t) {
+                    logger.error("Failed to register with Gateway after retries: {}", t.getMessage());
+                    // Decide what to do if registration fails after all retries (e.g., exit, keep retrying indefinitely)
+                    return; // Exit ApplicationRunner if registration fails
+                }
                 logger.info("Registration response from Gateway: {}", registrationResponse);
 
                 // 3. Parse Gateway Response for assigned port
@@ -103,12 +111,16 @@ public class NodeApplication {
                     String continentServerUrl = gatewayUrl.substring(0, gatewayUrl.lastIndexOf(":")) + ":" + assignedPort + "/";
                     logger.info("Connecting to continent server at: {}", continentServerUrl);
                     
-                    CheckedFunction0<String> continentCall = CheckedFunction0.of(() ->
-                            restTemplate.getForObject(continentServerUrl, String.class));
-                    
-                    String welcomeMessage = CircuitBreaker.decorateCheckedSupplier(continentServerCircuitBreaker, 
-                                            Retry.decorateCheckedSupplier(registerRetry, continentCall)) // Usar o mesmo retry config
-                                            .apply();
+                    CheckedSupplier<String> continentCall = () -> restTemplate.getForObject(continentServerUrl, String.class);
+                    String welcomeMessage;
+                    try {
+                        welcomeMessage = CircuitBreaker.decorateCheckedSupplier(continentServerCircuitBreaker, 
+                                                Retry.decorateCheckedSupplier(registerRetry, continentCall))
+                                                .get();
+                    } catch (Throwable t) {
+                        logger.error("Failed to connect to continent server after retries and circuit breaker: {}", t.getMessage());
+                        return; // Exit ApplicationRunner if connection fails
+                    }
                     logger.info("Welcome message from continent server: {}", welcomeMessage);
 
                 } else {
@@ -128,25 +140,27 @@ public class NodeApplication {
                 String deregisterUrl = gatewayUrl + "/deregisterNode/" + nodeExternalIp;
                 logger.info("Deregistering node {} from Gateway at: {}", nodeExternalIp, deregisterUrl);
                 
-                CheckedFunction0<Void> deregisterCall = CheckedFunction0.of(() -> {
-                    restTemplate.delete(deregisterUrl);
-                    return null;
-                });
+                CheckedRunnable deregisterCall = () -> restTemplate.delete(deregisterUrl);
                 
-                Retry.decorateCheckedRunnable(deregisterRetry, deregisterCall)
-                        .run();
-                logger.info("Node {} successfully deregistered.", nodeExternalIp);
+                try {
+                    Retry.decorateCheckedRunnable(deregisterRetry, deregisterCall)
+                            .run();
+                    logger.info("Node {} successfully deregistered.", nodeExternalIp);
+                } catch (Throwable t) {
+                    logger.error("Failed to deregister node {} after retries: {}", nodeExternalIp, t.getMessage());
+                }
             } catch (Exception e) {
                 logger.error("Failed to deregister node {}: {}", nodeExternalIp, e.getMessage());
             }
         }
     }
 
-    private String getExternalIp() throws IOException {
-        URL whatismyip = new URL("http://checkip.amazonaws.com");
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(whatismyip.openStream()))) {
-            return in.readLine();
-        }
+    private String getSimulatedPublicIpForTesting() {
+        // Em um cenário real, um nó buscaria seu IP público real (via checkip.amazonaws.com ou outro serviço)
+        // Aqui, retornamos um IP público fixo para que o GeoIP no Gateway possa resolver um continente.
+        String[] ips = {"8.8.8.8", "203.0.113.45", "198.51.100.10"}; // IPs de teste: EUA, Oceania, Europa
+        int randomIndex = (int) (Math.random() * ips.length);
+        return ips[randomIndex];
     }
 }
 

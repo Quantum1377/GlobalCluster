@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -48,12 +48,18 @@ public class GatewayController {
      * Redireciona para a porta do continente correspondente.
      */
     @PostMapping("/registerNode")
-    public String registerNode(HttpServletRequest request) {
-        String nodeIp = request.getRemoteAddr(); // Captura o IP do cliente
+    public String registerNode(HttpServletRequest request, @RequestParam(required = false) String testIp) { // Adicionar testIp
+        String nodeIp;
+        if (testIp != null && !testIp.isBlank()) {
+            nodeIp = testIp; // Usar o IP de teste se fornecido
+            logger.info("Received registration with testIp: {}. Overriding actual remote IP for GeoIP lookup.", nodeIp);
+        } else {
+            nodeIp = request.getRemoteAddr(); // Captura o IP do cliente
+        }
+
+        // Remover a lógica de fallback para 8.8.8.8 aqui, pois o nó já envia um IP de teste se necessário
         if (nodeIp == null || nodeIp.equals("0:0:0:0:0:0:0:1") || nodeIp.equals("127.0.0.1")) {
-            // For local testing, use a dummy public IP or allow explicit override
-            logger.warn("Received registration from local IP: {}. Using a dummy IP for GeoIP lookup for testing purposes.", nodeIp);
-            nodeIp = "8.8.8.8"; // Example public IP for testing
+            logger.warn("Received registration from local IP: {}. GeoIP lookup might fail for private IPs.", nodeIp);
         }
 
         String continent = geoIpService.getContinent(nodeIp);

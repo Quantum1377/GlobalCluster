@@ -1,6 +1,7 @@
 C:\Users\Pichau\Documents\GitHub\GlobalCluster\globalcluster-dashboard\src\main\java\com\globalcluster\dashboard\controller\AuthController.java
 C:\Users\Pichau\Documents\GitHub\GlobalCluster\globalcluster-dashboard\src\main\java\com\globalcluster\dashboard\controller\DashboardController.java
 C:\Users\Pichau\Documents\GitHub\GlobalCluster\globalcluster-dashboard\src\main\java\com\globalcluster\dashboard\DashboardApplication.java
+C:\Users\Pichau\Documents\GitHub\GlobalCluster\globalcluster-dashboard\src\main\java\com\globalcluster\dashboard\model\NodeMetric.java
 C:\Users\Pichau\Documents\GitHub\GlobalCluster\globalcluster-dashboard\src\main\java\com\globalcluster\dashboard\security\SecurityConfig.java
 C:\Users\Pichau\Documents\GitHub\GlobalCluster\globalcluster-dashboard\src\main\java\com\globalcluster\dashboard\service\AuthSessionService.java
 C:\Users\Pichau\Documents\GitHub\GlobalCluster\globalcluster-dashboard\src\main\java\com\globalcluster\dashboard\service\EmailService.java

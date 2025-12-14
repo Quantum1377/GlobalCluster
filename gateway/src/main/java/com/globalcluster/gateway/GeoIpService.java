@@ -10,8 +10,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -29,12 +29,18 @@ public class GeoIpService {
 
     @PostConstruct
     public void init() {
-        try {
-            File database = geolite2Database.getFile();
-            dbReader = new DatabaseReader.Builder(database).build();
-            logger.info("GeoLite2-Country.mmdb loaded successfully.");
+        File databaseFile = null;
+        try (var inputStream = geolite2Database.getInputStream()) {
+            databaseFile = File.createTempFile("GeoLite2-Country", ".mmdb");
+            java.nio.file.Files.copy(inputStream, databaseFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            dbReader = new DatabaseReader.Builder(databaseFile).build();
+            logger.info("GeoLite2-Country.mmdb loaded successfully from temporary file.");
         } catch (IOException e) {
             logger.error("Error loading GeoLite2-Country.mmdb. Please ensure the file is in 'src/main/resources/' and is a valid MaxMind database.", e);
+        } finally {
+            if (databaseFile != null) {
+                databaseFile.deleteOnExit(); // Garante que o arquivo temporário será excluído na saída
+            }
         }
     }
 

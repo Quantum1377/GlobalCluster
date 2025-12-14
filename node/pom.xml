@@ -31,6 +31,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Vavr, usado por Resilience4j para tipos funcionais -->
+        <dependency>
+            <groupId>io.vavr</groupId>
+            <artifactId>vavr</artifactId>
+            <version>0.10.4</version>
+        </dependency>
+
         <!-- Resilience4j para Circuit Breaker e Retry -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
