@@ -12,7 +12,7 @@ GlobalCluster is a demonstration distributed system built with Spring Boot, desi
 *   **Data Persistence (PostgreSQL):** The Gateway stores node registration data in a PostgreSQL database, ensuring data durability across Gateway restarts.
 *   **Monitoring Dashboard:** A web interface to visualize registered nodes, their IPs, continents, assigned ports, and simulated metrics (ping, latency, status).
 *   **IP Access Restriction:** Dashboard access is restricted to configurable IP addresses.
-*   **Graceful Deregistration:** Nodes send a deregistration request to the Gateway when they shut down.
+*   **Graceful Deregistration:** Nodes send a deregistration request to the Gateway when they shut down.  
 *   **Resilience Mechanisms (Resilience4j):** Implementation of Circuit Breakers and Retries to protect HTTP calls from nodes to the Gateway, increasing system robustness.
 *   **Modularity:** The project is divided into Maven modules, including a `shared` module for common DTOs and interfaces.
 *   **Containerization:** All services are dockerized for easy deployment and orchestration.
@@ -55,7 +55,6 @@ Communication between services is done via HTTP.
     1.  Create a free account on [MaxMind](https://www.maxmind.com/).
     2.  Download the `GeoLite2-Country.mmdb` file.
     3.  Place this file into the `gateway/src/main/resources/` directory. **This step is crucial for the GeoIP service to function.**
-    *(Note: This file is excluded from version control and should be obtained separately.)*
 
 ### Steps to Run
 
@@ -71,7 +70,7 @@ Communication between services is done via HTTP.
     ```bash
     docker-compose up --build
     ```
-    *   **To simulate multiple nodes:** If you wish to run more than one node, use the `--scale` flag:
+    *   **To simulate multiple nodes:** If you wish to run more than one node, use the `--scale` flag:    
         ```bash
         docker-compose up --build --scale node=3 # Runs 1 Gateway, 1 Dashboard, 3 Nodes, 1 Master, 1 Postgres
         ```
@@ -81,7 +80,7 @@ Communication between services is done via HTTP.
     *   **Monitoring Dashboard:**
         Open your browser and navigate to: `http://localhost:8087/dashboard`
         *   You will be redirected to a login screen. Use the existing login mechanism (the project does not come with pre-configured users, but the login functionality is present).
-        *   **IP Restriction:** Dashboard access is restricted by IP. If you are accessing from an IP other than `127.0.0.1` or `[your ip]` (configured in `globalcluster-dashboard/src/main/resources/application.properties`), ensure your IP is included in the `dashboard.allowed-ips` property.
+        *   **IP Restriction:** Dashboard access is restricted by IP. If you are accessing from an IP other than `127.0.0.1` or `192.168.1.7` (configured in `globalcluster-dashboard/src/main/resources/application.properties`), ensure your IP is included in the `dashboard.allowed-ips` property.
 
     *   **Continent Servers (Gateway):**
         You can test the continent ports directly in your browser:
@@ -112,10 +111,10 @@ docker-compose down -v
 The project can be expanded and improved with the following functionalities:
 
 *   **Heartbeat Mechanism:** Implement regular heartbeats from nodes to the Gateway for more accurate "UP/DOWN" status.
-*   **Node Identification (UUID):** Use a persistent UUID to uniquely identify nodes, regardless of IP.
-*   **Centralized Configuration:** Integrate Spring Cloud Config to manage configurations dynamically.
+*   **Node Identification (UUID):** Use a persistent UUID to uniquely identify nodes, regardless of IP.   
+*   **Centralized Configuration:** Integrate Spring Cloud Config to manage configurations dynamically.    
 *   **Metrics and Observability:** Add Actuator and Micrometer to collect real metrics, with integration to Prometheus/Grafana.
-*   **Advanced Security:** Implement more robust authentication and authorization between services.
+*   **Advanced Security:** Implement more robust authentication and authorization between services.       
 *   **Kubernetes:** Prepare the deployment for a Kubernetes cluster.
 
 ## License
@@ -124,4 +123,4 @@ The project can be expanded and improved with the following functionalities:
 
 ## Contact
 
-[]
+[/gmail:abner.pessoal1412@gmail.com/Github:Quantum1377]
