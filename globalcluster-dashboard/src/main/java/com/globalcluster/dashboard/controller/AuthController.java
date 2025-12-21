@@ -3,7 +3,10 @@ package com.globalcluster.dashboard.controller;
 import com.globalcluster.dashboard.service.EmailService;
 import com.globalcluster.dashboard.service.AuthSessionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
@@ -15,13 +18,16 @@ public class AuthController {
     @Autowired
     private AuthSessionService authSessionService;
 
+    @Value("${dashboard.authorized-emails}")
+    private List<String> authorizedEmails;
+
     // ================
     // 1) Enviar código
     // ================
     @PostMapping("/send-code")
     public String sendCode(@RequestParam String email) {
 
-        if (!email.equals("abneransilva@gmail.com")) {
+        if (!authorizedEmails.contains(email)) {
             return "Apenas o dono do painel pode fazer login.";
         }
 
