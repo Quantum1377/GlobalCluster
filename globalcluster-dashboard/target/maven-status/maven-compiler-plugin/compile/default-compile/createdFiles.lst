@@ -1,8 +1,0 @@
-com\globalcluster\dashboard\controller\AuthController.class
-com\globalcluster\dashboard\security\SecurityConfig.class
-com\globalcluster\dashboard\service\AuthSessionService.class
-com\globalcluster\dashboard\DashboardApplication.class
-com\globalcluster\dashboard\controller\DashboardController.class
-com\globalcluster\dashboard\controller\DashboardController$1.class
-com\globalcluster\dashboard\model\NodeMetric.class
-com\globalcluster\dashboard\service\EmailService.class

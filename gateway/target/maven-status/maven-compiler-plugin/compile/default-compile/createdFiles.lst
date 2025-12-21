@@ -1,8 +1,0 @@
-com\globalcluster\gateway\ContinentController.class
-com\globalcluster\gateway\GatewayController.class
-com\globalcluster\gateway\model\NodeRegistrationEntity.class
-com\globalcluster\gateway\GatewayApplication.class
-com\globalcluster\gateway\GeoIpService.class
-com\globalcluster\gateway\RegionResolver.class
-com\globalcluster\gateway\repository\NodeRegistrationRepository.class
-com\globalcluster\gateway\WebServerConfig.class

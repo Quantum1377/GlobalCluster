@@ -55,6 +55,7 @@ Communication between services is done via HTTP.
     1.  Create a free account on [MaxMind](https://www.maxmind.com/).
     2.  Download the `GeoLite2-Country.mmdb` file.
     3.  Place this file into the `gateway/src/main/resources/` directory. **This step is crucial for the GeoIP service to function.**
+    *(Note: This file is excluded from version control and should be obtained separately.)*
 
 ### Steps to Run
 
@@ -80,7 +81,7 @@ Communication between services is done via HTTP.
     *   **Monitoring Dashboard:**
         Open your browser and navigate to: `http://localhost:8087/dashboard`
         *   You will be redirected to a login screen. Use the existing login mechanism (the project does not come with pre-configured users, but the login functionality is present).
-        *   **IP Restriction:** Dashboard access is restricted by IP. If you are accessing from an IP other than `127.0.0.1` or `192.168.1.7` (configured in `globalcluster-dashboard/src/main/resources/application.properties`), ensure your IP is included in the `dashboard.allowed-ips` property.
+        *   **IP Restriction:** Dashboard access is restricted by IP. If you are accessing from an IP other than `127.0.0.1` or `[your ip]` (configured in `globalcluster-dashboard/src/main/resources/application.properties`), ensure your IP is included in the `dashboard.allowed-ips` property.
 
     *   **Continent Servers (Gateway):**
         You can test the continent ports directly in your browser:
@@ -123,4 +124,4 @@ The project can be expanded and improved with the following functionalities:
 
 ## Contact
 
-[/gmail:abner.pessoal1412@gmail.com/Github:Quantum1377]
+[]

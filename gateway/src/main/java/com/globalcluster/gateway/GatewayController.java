@@ -58,7 +58,7 @@ public class GatewayController {
         }
 
         // Remover a lógica de fallback para 8.8.8.8 aqui, pois o nó já envia um IP de teste se necessário
-        if (nodeIp == null || nodeIp.equals("0:0:0:0:0:0:0:1") || nodeIp.equals("127.0.0.1")) {
+        if (nodeIp == null || nodeIp.equals("0:0:0:0:0:0:0:1") || nodeIp.equals("[your ip]")) {
             logger.warn("Received registration from local IP: {}. GeoIP lookup might fail for private IPs.", nodeIp);
         }
 
