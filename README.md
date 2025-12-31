@@ -117,10 +117,6 @@ The project can be expanded and improved with the following functionalities:
 *   **Advanced Security:** Implement more robust authentication and authorization between services.       
 *   **Kubernetes:** Prepare the deployment for a Kubernetes cluster.
 
-## License
-
-[Add your license information here, e.g., MIT License]
-
 ## Contact
 
 [/gmail:abner.pessoal1412@gmail.com/Github:Quantum1377]
