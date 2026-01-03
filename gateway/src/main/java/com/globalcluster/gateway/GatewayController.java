@@ -1,19 +1,26 @@
 package com.globalcluster.gateway;
 
-import com.globalcluster.gateway.model.NodeRegistrationEntity;
-import com.globalcluster.gateway.repository.NodeRegistrationRepository;
-import com.globalcluster.shared.NodeRegistrationInfo; // Importar a classe compartilhada
+import com.globalcluster.shared.NodeInfo;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.core.functions.CheckedFunction;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
-import jakarta.servlet.http.HttpServletRequest;
-import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
 public class GatewayController {
@@ -24,94 +31,68 @@ public class GatewayController {
     private GeoIpService geoIpService;
 
     @Autowired
-    private NodeRegistrationRepository nodeRegistrationRepository; // Injetar o repositório
+    private RestTemplate restTemplate;
 
-    // Mapeia continentes para portas específicas
-    private int assignContinentPort(String continentName) {
-        if (continentName == null) {
-            return 8080; // Default to dashboard port if continent is unknown
-        }
-        return switch (continentName.toUpperCase()) {
-            case "NORTH AMERICA", "SOUTH AMERICA" -> 8081; // Americas
-            case "EUROPE" -> 8082;
-            case "AFRICA" -> 8083;
-            case "ASIA" -> 8084;
-            case "OCEANIA" -> 8085;
-            case "ANTARCTICA" -> 8086;
-            default -> 8080; // Fallback to dashboard port
-        };
-    }
+    @Autowired
+    private Retry masterApiRetry;
 
-    /**
-     * Endpoint para o registro automático de nós.
-     * O IP do nó é detectado automaticamente da requisição.
-     * Redireciona para a porta do continente correspondente.
-     */
-    @PostMapping("/registerNode")
-    public String registerNode(HttpServletRequest request, @RequestParam(required = false) String testIp) { // Adicionar testIp
-        String nodeIp;
-        if (testIp != null && !testIp.isBlank()) {
-            nodeIp = testIp; // Usar o IP de teste se fornecido
-            logger.info("Received registration with testIp: {}. Overriding actual remote IP for GeoIP lookup.", nodeIp);
-        } else {
-            nodeIp = request.getRemoteAddr(); // Captura o IP do cliente
+    @Autowired
+    private CircuitBreaker masterApiCircuitBreaker;
+
+    @Value("${globalcluster.master.url}")
+    private String masterUrl;
+
+    @GetMapping("/**")
+    public ResponseEntity<String> proxyRequest(HttpServletRequest request) {
+        String clientIp = request.getRemoteAddr();
+        String continent = geoIpService.getContinent(clientIp);
+
+        if (continent == null) {
+            logger.warn("Could not determine continent for IP: {}. Using default region.", clientIp);
+            continent = "default";
         }
 
-        // Remover a lógica de fallback para 8.8.8.8 aqui, pois o nó já envia um IP de teste se necessário
-        if (nodeIp == null || nodeIp.equals("0:0:0:0:0:0:0:1") || nodeIp.equals("[your ip]")) {
-            logger.warn("Received registration from local IP: {}. GeoIP lookup might fail for private IPs.", nodeIp);
+        List<NodeInfo> nodes = Collections.emptyList();
+        try {
+            CheckedFunction<String, List<NodeInfo>> masterCall = (region) -> {
+                String url = masterUrl + "/nodes/" + region;
+                ResponseEntity<List<NodeInfo>> response = restTemplate.exchange(
+                        url,
+                        HttpMethod.GET,
+                        null,
+                        new ParameterizedTypeReference<List<NodeInfo>>() {}
+                );
+                return response.getBody();
+            };
+
+            nodes = CircuitBreaker.decorateCheckedFunction(masterApiCircuitBreaker, masterApiRetry.decorateCheckedFunction(masterCall)).apply(continent);
+        } catch (Throwable t) {
+            logger.error("Failed to retrieve node list from Master after retries and circuit breaker: {}", t.getMessage());
+            return ResponseEntity.status(503).body("Service temporarily unavailable. Please try again later.");
         }
 
-        String continent = geoIpService.getContinent(nodeIp);
-        int assignedPort = assignContinentPort(continent);
 
-        // Criar ou atualizar a entidade no banco de dados
-        NodeRegistrationEntity entity = nodeRegistrationRepository.findById(nodeIp).orElse(new NodeRegistrationEntity());
-        entity.setIpAddress(nodeIp);
-        entity.setContinent(continent);
-        entity.setAssignedPort(assignedPort);
-        entity.setRegistrationTime(LocalDateTime.now());
-        entity.setLastHeartbeat(LocalDateTime.now()); // Atualiza o heartbeat no registro
+        if (nodes == null || nodes.isEmpty()) {
+            logger.error("No nodes available for region: {}", continent);
+            return ResponseEntity.status(503).body("No nodes available for your region.");
+        }
 
-        nodeRegistrationRepository.save(entity); // Salvar ou atualizar no banco
+        // Least Connections Load Balancing
+        Optional<NodeInfo> leastLoadedNode = nodes.stream()
+                .min(Comparator.comparingInt(NodeInfo::getCurrentLoad));
 
-        logger.info("Node {} from {} registered and assigned to port {}.", nodeIp, continent, assignedPort);
+        if (leastLoadedNode.isEmpty()) {
+            logger.error("Could not find a least loaded node for region: {}", continent);
+            return ResponseEntity.status(503).body("No available nodes to handle your request.");
+        }
 
-        return "Connect to Master on port: " + assignedPort;
-    }
+        NodeInfo selectedNode = leastLoadedNode.get();
 
-    /**
-     * Endpoint do Dashboard para visualizar os nós conectados.
-     * Restrito a IPs específicos na porta 8080.
-     */
-    @GetMapping("/dashboard")
-    public Map<String, NodeRegistrationInfo> dashboard() {
-        List<NodeRegistrationEntity> entities = nodeRegistrationRepository.findAll();
-        return entities.stream()
-                .map(this::toNodeRegistrationInfo)
-                .collect(Collectors.toConcurrentMap(NodeRegistrationInfo::getIpAddress, info -> info));
-    }
+        String targetUrl = "http://" + selectedNode.getId() + request.getRequestURI();
+        logger.info("Proxying request for {} to node {} at {}", clientIp, selectedNode.getId(), targetUrl);
 
-    // Método auxiliar para converter Entity para DTO
-    private NodeRegistrationInfo toNodeRegistrationInfo(NodeRegistrationEntity entity) {
-        NodeRegistrationInfo dto = new NodeRegistrationInfo(entity.getIpAddress(), entity.getContinent(), entity.getAssignedPort());
-        dto.setRegistrationTime(entity.getRegistrationTime());
-        dto.setLastHeartbeat(entity.getLastHeartbeat()); // Setar o lastHeartbeat
-        return dto;
-    }
-
-    @GetMapping("/hello")
-    public String hello() {
-        return "Hello from Gateway!";
-    }
-
-    /**
-     * Endpoint para desregistrar um nó.
-     * Remove o registro do nó do banco de dados.
-     */
-    @DeleteMapping("/deregisterNode/{nodeIp}")
-    public void deregisterNode(@PathVariable String nodeIp) {
-        nodeRegistrationRepository.deleteById(nodeIp);
-        logger.info("Node {} deregistered.", nodeIp);
+        // In a real scenario, you would proxy the request body and headers as well.
+        // For this example, we'll just redirect.
+        return ResponseEntity.status(302).header("Location", targetUrl).build();
     }
 }
